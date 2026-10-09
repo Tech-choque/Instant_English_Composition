@@ -1,0 +1,182 @@
+<title>瞬間英作文</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* 1枚のカードを回す練習帳。お題 → 自分の英文 → 答え／添削 → 発音チェックへ */
+:root {
+  --bg: #f5f6f4; --surface: #ffffff; --fg: #1d2522; --muted: #5d6a65; --line: #d9dfdb;
+  --accent: #1f6f5c; --accent-fg: #ffffff; --soft: #e6f1ed;
+  --ok: #1f7a3d; --ok-bg: #e3f2e7; --mid: #8a5a00; --mid-bg: #fbf0d9; --ng: #b3261e; --ng-bg: #fbe5e3;
+  --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121715; --surface: #1a211e; --fg: #e4ebe7; --muted: #9aa8a2; --line: #2c3632;
+  --accent: #5cc3a6; --accent-fg: #0d1a16; --soft: #1b2c27;
+  --ok: #7fd497; --ok-bg: #18301f; --mid: #f0c56b; --mid-bg: #33280f; --ng: #ff9a90; --ng-bg: #3a1c19;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121715; --surface: #1a211e; --fg: #e4ebe7; --muted: #9aa8a2; --line: #2c3632;
+  --accent: #5cc3a6; --accent-fg: #0d1a16; --soft: #1b2c27;
+  --ok: #7fd497; --ok-bg: #18301f; --mid: #f0c56b; --mid-bg: #33280f; --ng: #ff9a90; --ng-bg: #3a1c19;
+  color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.65; }
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 1.3rem; margin: 0; }
+.count { font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: .88rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 16px; display: grid; gap: 14px; min-width: 0; }
+.prompt { font-size: 1.35rem; font-weight: 600; line-height: 1.5; text-wrap: balance; }
+label { font-size: .85rem; color: var(--muted); display: grid; gap: 4px; }
+textarea { font: inherit; font-size: 1.05rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; resize: vertical; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button, .link { font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; text-decoration: none; display: inline-block; }
+button.sub, .link { background: transparent; color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, .link:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { background: var(--soft); border-radius: 8px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.panel h2 { font-size: .8rem; color: var(--muted); margin: 0; letter-spacing: .04em; font-weight: 600; }
+.en { font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
+.pill { justify-self: start; font-size: .78rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); }
+.pill[data-v="mid"] { background: var(--mid-bg); color: var(--mid); }
+.pill[data-v="ng"] { background: var(--ng-bg); color: var(--ng); }
+dl { margin: 0; display: grid; gap: 6px; }
+dt { font-size: .78rem; color: var(--muted); }
+dd { margin: 0; }
+.status { font-size: .9rem; color: var(--muted); min-height: 1.4em; }
+.status[data-err] { color: var(--ng); }
+nav.row { justify-content: space-between; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>瞬間英作文</h1>
+    <span class="count" id="count">1 / 12</span>
+  </header>
+
+  <div class="card">
+    <p class="muted">日本語を見て、すぐ英語で言ってみてください。キーボードのマイクで話して入力しても構いません。</p>
+    <p class="prompt" id="prompt"></p>
+    <label for="ans">あなたの英文<textarea id="ans" rows="2" spellcheck="false" autocapitalize="sentences" placeholder="英語で入力"></textarea></label>
+    <div class="row">
+      <button id="b-check" type="button">Claudeに添削してもらう</button>
+      <button id="b-answer" type="button" class="sub">答えの例を見る</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+
+    <div class="panel" id="p-answer" hidden>
+      <h2>答えの例</h2>
+      <p class="en" id="model"></p>
+      <div class="row"><a class="link" id="l-model" target="_blank" rel="noopener">この文で発音チェック</a></div>
+    </div>
+
+    <div class="panel" id="p-review" hidden>
+      <h2>添削</h2>
+      <span class="pill" id="verdict"></span>
+      <dl>
+        <dt>自然な言い方</dt><dd class="en" id="natural"></dd>
+        <dt>ポイント</dt><dd id="point"></dd>
+        <dt>発音で気をつけるところ</dt><dd id="pron"></dd>
+      </dl>
+      <div class="row">
+        <a class="link" id="l-mine" target="_blank" rel="noopener">自分の文で発音チェック</a>
+        <a class="link" id="l-natural" target="_blank" rel="noopener">直した文で発音チェック</a>
+      </div>
+    </div>
+  </div>
+
+  <nav class="row" aria-label="お題の移動">
+    <button id="b-prev" type="button" class="sub">前のお題</button>
+    <button id="b-next" type="button">次のお題</button>
+  </nav>
+  <p class="muted">お題は試作用の12問です（中学英語の範囲・身の回りの話題）。発音チェックは別のページ（ブラウザ）で開きます。</p>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const CHECK_URL = "https://tech-choque.github.io/Instant_English_Composition/";
+  const ITEMS = [
+    ["今朝はいつもより少し遅く家を出た。", "I left home a little later than usual this morning."],
+    ["歩いて会社に行くのに1時間かかる。", "It takes an hour to walk to work."],
+    ["子どもを保育園に送ってから仕事に行く。", "I take my kid to daycare before I go to work."],
+    ["週末に魚の水槽の水を替えた。", "I changed the water in the fish tank over the weekend."],
+    ["昼休みに30分、英語を勉強している。", "I study English for thirty minutes during my lunch break."],
+    ["朝の支度をしながら日記を書く。", "I write in my diary while I get ready in the morning."],
+    ["雨が降りそうだから、傘を持っていったほうがいいよ。", "It looks like rain, so you should take an umbrella."],
+    ["その会議は思ったより早く終わった。", "The meeting ended earlier than I expected."],
+    ["何か手伝えることはありますか。", "Is there anything I can help you with?"],
+    ["もう少しゆっくり話してもらえますか。", "Could you speak a little more slowly?"],
+    ["この本は読みやすいけど、内容は深い。", "This book is easy to read, but it's really deep."],
+    ["明日の朝までにこれを終わらせないといけない。", "I have to finish this by tomorrow morning."],
+  ];
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+  let i = Math.min(ITEMS.length - 1, Math.max(0, parseInt(store.get("iec.index") || "0", 10) || 0));
+
+  const checkLink = (text) => `${CHECK_URL}?${new URLSearchParams({ text, ja: ITEMS[i][0] })}`;
+  const say = (msg, isErr) => { $("status").textContent = msg; if (isErr) $("status").dataset.err = ""; else delete $("status").dataset.err; };
+
+  function show() {
+    const [ja, en] = ITEMS[i];
+    $("count").textContent = `${i + 1} / ${ITEMS.length}`;
+    $("prompt").textContent = ja;
+    $("model").textContent = en;
+    $("l-model").href = checkLink(en);
+    $("ans").value = "";
+    $("p-answer").hidden = true; $("p-review").hidden = true;
+    $("b-prev").disabled = i === 0;
+    $("b-next").textContent = i === ITEMS.length - 1 ? "最初に戻る" : "次のお題";
+    say("");
+    store.set("iec.index", String(i));
+  }
+  $("b-prev").onclick = () => { if (i > 0) { i--; show(); } };
+  $("b-next").onclick = () => { i = (i + 1) % ITEMS.length; show(); };
+  $("b-answer").onclick = () => { $("p-answer").hidden = false; };
+
+  const samplePromise = window.claude && window.claude.use ? window.claude.use("sample") : Promise.resolve(null);
+  samplePromise.then((s) => { if (!s) { $("b-check").hidden = true; } });
+
+  const VERDICT = { ok: ["通じる", "ok"], mid: ["少し不自然", "mid"], ng: ["通じにくい", "ng"] };
+  $("b-check").onclick = async () => {
+    const answer = $("ans").value.trim();
+    if (!answer) { say("先に英文を入れてください。", true); return; }
+    const sample = await samplePromise;
+    if (!sample) { say("この表示ではClaudeを呼び出せません。", true); return; }
+    const btn = $("b-check"); btn.disabled = true;
+    say("添削しています…");
+    const prompt = [
+      "あなたは瞬間英作文の講師です。学習者は日本人の社会人で、中学英語の範囲で「簡単な英語ですぐ言う」練習をしています。",
+      "日本語のお題と、学習者が言った英文を見て、次のJSONだけを返してください。説明文やコードブロックは付けないでください。",
+      '{"verdict": "ok" | "mid" | "ng", "natural": "自然な英文1つ（中学英語の範囲・学習者の文を活かす）", "point": "直した理由を日本語で1〜2文。直す必要がなければ良い点を1文", "pron": "この文を言うときの発音の注意を日本語で1文。リンキング・フラッピング・リダクションのどれかを、具体的な単語の組み合わせで"}',
+      "verdict の基準: ok=そのまま通じて自然 / mid=通じるが不自然 / ng=意味が伝わりにくい。",
+      "",
+      `お題: ${ITEMS[i][0]}`,
+      `学習者の英文: ${answer}`,
+    ].join("\n");
+    try {
+      const r = await sample.json(prompt, { modelTier: "quick" });
+      const [label, v] = VERDICT[r.verdict] || [String(r.verdict || "—"), "mid"];
+      $("verdict").textContent = label; $("verdict").dataset.v = v;
+      $("natural").textContent = r.natural || "";
+      $("point").textContent = r.point || "";
+      $("pron").textContent = r.pron || "";
+      $("l-mine").href = checkLink(answer);
+      $("l-natural").href = checkLink(r.natural || answer);
+      $("p-review").hidden = false;
+      say("");
+    } catch (e) {
+      if (e && e.code === "not_granted") say("Claudeの利用が許可されませんでした。答えの例で確認してください。", true);
+      else if (e && e.code === "rate_limited") say("少し時間をおいてから、もう一度どうぞ。", true);
+      else say(`添削できませんでした（${(e && (e.code || e.message)) || e}）`, true);
+    } finally { btn.disabled = false; }
+  };
+
+  show();
+})();
+</script>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>発音チェック</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* 1カラム。英文 → お手本 → 録音 → 採点結果（単語ごと・音素ごと）の順に上から下へ */
+:root {
+  --bg: #f5f6f4; --surface: #ffffff; --fg: #1d2522; --muted: #5d6a65; --line: #d9dfdb;
+  --accent: #1f6f5c; --accent-fg: #ffffff; --rec: #b3261e;
+  --ok: #1f7a3d; --ok-bg: #e3f2e7; --mid: #8a5a00; --mid-bg: #fbf0d9; --ng: #b3261e; --ng-bg: #fbe5e3;
+  --font-body: "IBM Plex Sans JP", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121715; --surface: #1a211e; --fg: #e4ebe7; --muted: #9aa8a2; --line: #2c3632;
+  --accent: #5cc3a6; --accent-fg: #0d1a16; --rec: #ff8a80;
+  --ok: #7fd497; --ok-bg: #18301f; --mid: #f0c56b; --mid-bg: #33280f; --ng: #ff9a90; --ng-bg: #3a1c19;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.65; }
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
+h1 { font-size: 1.3rem; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: .88rem; }
+section { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.ja { font-size: 1rem; }
+label { font-size: .85rem; color: var(--muted); display: grid; gap: 4px; }
+input, textarea, select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+textarea#ref { font-size: 1.1rem; line-height: 1.5; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+button { font: inherit; font-weight: 600; border-radius: 8px; padding: 11px 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; }
+button.sub { background: transparent; color: var(--accent); }
+button.recording { background: var(--rec); border-color: var(--rec); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.status { font-size: .9rem; min-height: 1.5em; }
+.status[data-err] { color: var(--ng); }
+.scores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 420px) { .scores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.score { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; }
+.score b { font-family: var(--font-mono); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.score span { font-size: .75rem; color: var(--muted); }
+.heard { font-family: var(--font-mono); font-size: .9rem; }
+.words { display: flex; flex-wrap: wrap; gap: 8px; }
+.word { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; display: grid; gap: 4px; }
+.word .w { font-weight: 600; }
+.word .err { font-size: .72rem; color: var(--ng); }
+.ph { display: flex; gap: 4px; flex-wrap: wrap; font-family: var(--font-mono); font-size: .8rem; }
+.ph span { padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; background: var(--ok-bg); color: var(--ok); }
+.ph span[data-lv="mid"] { background: var(--mid-bg); color: var(--mid); }
+.ph span[data-lv="low"] { background: var(--ng-bg); color: var(--ng); }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: .78rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+details summary { cursor: pointer; font-weight: 600; }
+details[open] summary { margin-bottom: 10px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 480px) { .fields { grid-template-columns: 1fr; } }
+.check { display: flex; gap: 8px; align-items: center; color: var(--fg); }
+.check input { width: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>発音チェック</h1>
+    <p class="muted">お手本を聞いてから、英文を読み上げてください。話し終わると自動で止まり、音素ごとに採点します。</p>
+  </header>
+
+  <section aria-label="読み上げる英文">
+    <p class="ja" id="ja" hidden></p>
+    <label for="ref">読み上げる英文<textarea id="ref" rows="3" spellcheck="false">I usually walk to work, but it took a little longer today.</textarea></label>
+    <div class="row">
+      <button id="b-listen" type="button" class="sub">お手本を聞く</button>
+      <button id="b-rec" type="button">録音して採点</button>
+    </div>
+    <p class="status" id="status" role="status"></p>
+  </section>
+
+  <section id="result" aria-label="採点結果" hidden>
+    <div class="scores" id="scores"></div>
+    <p class="heard">認識: <span id="heard"></span></p>
+    <div class="words" id="words"></div>
+    <div class="legend"><span><i style="background:var(--ok)"></i>80以上</span><span><i style="background:var(--mid)"></i>60〜79</span><span><i style="background:var(--ng)"></i>59以下</span></div>
+  </section>
+
+  <section aria-label="設定">
+    <details id="settings">
+      <summary>Azureのキーと声の設定</summary>
+      <div style="display:grid;gap:10px">
+        <p class="muted">キーはこの端末のブラウザにだけ保存します。ページのコードやGitHubには入りません。</p>
+        <div class="fields">
+          <label for="key">Speechのキー<input id="key" type="password" autocomplete="off" spellcheck="false"></label>
+          <label for="region">リージョン<input id="region" type="text" autocomplete="off" spellcheck="false" value="japaneast"></label>
+          <label for="voice">お手本の声<select id="voice">
+            <option value="en-US-JennyNeural">Jenny（米・女性）</option>
+            <option value="en-US-GuyNeural">Guy（米・男性）</option>
+            <option value="en-GB-SoniaNeural">Sonia（英・女性）</option>
+          </select></label>
+          <label for="rate">お手本の速さ<select id="rate">
+            <option value="0.8">ゆっくり</option>
+            <option value="1.0" selected>ふつう</option>
+          </select></label>
+        </div>
+        <label class="check" for="keep"><input id="keep" type="checkbox" checked>この端末に保存する</label>
+        <div class="row"><button id="b-save" type="button" class="sub">保存</button><button id="b-forget" type="button" class="sub">保存したキーを消す</button></div>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script src="vendor/speech-sdk/microsoft.cognitiveservices.speech.sdk.bundle-min.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const SDK = window.SpeechSDK;
+
+  // ---------- settings (this browser only) ----------
+  const store = {
+    get(k) { try { return localStorage.getItem("iec." + k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem("iec." + k, v); } catch {} },
+    del(k) { try { localStorage.removeItem("iec." + k); } catch {} },
+  };
+  $("key").value = store.get("key") || "";
+  $("region").value = store.get("region") || "japaneast";
+  $("voice").value = store.get("voice") || "en-US-JennyNeural";
+  $("rate").value = store.get("rate") || "1.0";
+  if (!$("key").value) $("settings").open = true;
+  const save = () => {
+    if ($("keep").checked) {
+      store.set("key", $("key").value.trim()); store.set("region", $("region").value.trim().toLowerCase());
+    }
+    store.set("voice", $("voice").value); store.set("rate", $("rate").value);
+  };
+  $("b-save").onclick = () => { save(); say("保存しました"); };
+  $("b-forget").onclick = () => { store.del("key"); $("key").value = ""; say("この端末に保存したキーを消しました"); };
+
+  // ---------- sentence from the link (?text=...&ja=...) ----------
+  const q = new URLSearchParams(location.search);
+  if (q.get("text")) $("ref").value = q.get("text");
+  if (q.get("ja")) { $("ja").textContent = "お題: " + q.get("ja"); $("ja").hidden = false; }
+
+  const say = (msg, isErr) => { $("status").textContent = msg; if (isErr) $("status").dataset.err = ""; else delete $("status").dataset.err; };
+  const config = () => {
+    const key = $("key").value.trim(), region = $("region").value.trim().toLowerCase();
+    if (!SDK) { say("採点の部品を読み込めませんでした。ページを開き直してください。", true); return null; }
+    if (!key || !region) { $("settings").open = true; say("下の設定にAzureのキーとリージョンを入れてください。", true); return null; }
+    save();
+    return SDK.SpeechConfig.fromSubscription(key, region);
+  };
+  const cancelText = (details) => {
+    const d = (details && details.errorDetails) || "";
+    if (/401|Unauthorized|authentication/i.test(d)) return "キーが違うか、リージョンが合っていません。設定を見直してください。";
+    if (/1006|websocket|network/i.test(d)) return "Azureにつながりませんでした。通信状態を確かめてください。";
+    return "失敗しました: " + d;
+  };
+  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
+
+  // ---------- model audio (Azure TTS) ----------
+  $("b-listen").onclick = () => {
+    const cfg = config(); if (!cfg) return;
+    const text = $("ref").value.trim(); if (!text) return;
+    const voice = $("voice").value, rate = $("rate").value;
+    const lang = voice.slice(0, 5);
+    const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}"><voice name="${voice}"><prosody rate="${rate}">${esc(text)}</prosody></voice></speak>`;
+    const player = new SDK.SpeakerAudioDestination();
+    const synth = new SDK.SpeechSynthesizer(cfg, SDK.AudioConfig.fromSpeakerOutput(player));
+    $("b-listen").disabled = true; say("お手本を再生しています…");
+    player.onAudioEnd = () => { $("b-listen").disabled = false; say(""); };
+    synth.speakSsmlAsync(ssml, (r) => {
+      synth.close();
+      if (r.reason !== SDK.ResultReason.SynthesizingAudioCompleted) {
+        $("b-listen").disabled = false;
+        say(cancelText(SDK.CancellationDetails.fromResult(r)), true);
+      }
+    }, (e) => { synth.close(); $("b-listen").disabled = false; say("お手本を作れませんでした: " + e, true); });
+  };
+
+  // ---------- record & assess ----------
+  $("b-rec").onclick = () => {
+    const cfg = config(); if (!cfg) return;
+    const ref = $("ref").value.trim(); if (!ref) { say("英文を入れてください。", true); return; }
+    cfg.speechRecognitionLanguage = "en-US";
+    const pa = new SDK.PronunciationAssessmentConfig(ref, SDK.PronunciationAssessmentGradingSystem.HundredMark, SDK.PronunciationAssessmentGranularity.Phoneme, true);
+    pa.phonemeAlphabet = "IPA";
+    pa.enableProsodyAssessment = true;
+    let reco;
+    try { reco = new SDK.SpeechRecognizer(cfg, SDK.AudioConfig.fromDefaultMicrophoneInput()); }
+    catch (e) { say("マイクを使えませんでした: " + e, true); return; }
+    pa.applyTo(reco);
+    const btn = $("b-rec");
+    btn.disabled = true; btn.classList.add("recording"); btn.textContent = "録音中…";
+    say("どうぞ。話し終わると自動で止まります。");
+    $("result").hidden = true;
+    const done = () => { reco.close(); btn.disabled = false; btn.classList.remove("recording"); btn.textContent = "録音して採点"; };
+    reco.recognizeOnceAsync((r) => {
+      done();
+      if (r.reason === SDK.ResultReason.RecognizedSpeech) { render(SDK.PronunciationAssessmentResult.fromResult(r), r.text); say(""); }
+      else if (r.reason === SDK.ResultReason.NoMatch) say("声を聞き取れませんでした。マイクに近づいて、もう一度どうぞ。", true);
+      else say(cancelText(SDK.CancellationDetails.fromResult(r)), true);
+    }, (e) => {
+      done();
+      say(/Permission|NotAllowed/i.test(String(e)) ? "マイクの使用が許可されていません。ブラウザの設定で、このページのマイクを許可してください。" : "失敗しました: " + e, true);
+    });
+  };
+
+  const level = (v) => (v >= 80 ? "ok" : v >= 60 ? "mid" : "low");
+  const ERR = { Mispronunciation: "発音ミス", Omission: "抜け", Insertion: "余分", UnexpectedBreak: "不要な間", MissingBreak: "間がない", Monotone: "平坦" };
+  function render(res, heard) {
+    const sc = $("scores"); sc.replaceChildren();
+    const items = [["総合", res.pronunciationScore], ["正確さ", res.accuracyScore], ["流暢さ", res.fluencyScore], ["完全さ", res.completenessScore]];
+    if (res.prosodyScore != null) items.push(["抑揚", res.prosodyScore]);
+    for (const [label, v] of items) {
+      const d = document.createElement("div"); d.className = "score";
+      const b = document.createElement("b"); b.textContent = v == null ? "—" : Math.round(v);
+      const s = document.createElement("span"); s.textContent = label;
+      d.append(b, s); sc.append(d);
+    }
+    $("heard").textContent = heard || "";
+    const ws = $("words"); ws.replaceChildren();
+    for (const w of (res.detailResult && res.detailResult.Words) || []) {
+      const pa = w.PronunciationAssessment || {};
+      const d = document.createElement("div"); d.className = "word";
+      const t = document.createElement("span"); t.className = "w";
+      t.textContent = `${w.Word} ${pa.AccuracyScore == null ? "" : Math.round(pa.AccuracyScore)}`;
+      d.append(t);
+      const errs = [pa.ErrorType, ...(((pa.Feedback || {}).Prosody || {}).Break || {}).ErrorTypes || []].filter((x) => x && x !== "None");
+      if (errs.length) { const e = document.createElement("span"); e.className = "err"; e.textContent = [...new Set(errs)].map((x) => ERR[x] || x).join("・"); d.append(e); }
+      const ph = document.createElement("div"); ph.className = "ph";
+      for (const p of w.Phonemes || []) {
+        const v = (p.PronunciationAssessment || {}).AccuracyScore;
+        const s = document.createElement("span"); s.textContent = `${p.Phoneme} ${v == null ? "—" : Math.round(v)}`;
+        if (v != null) s.dataset.lv = level(v);
+        ph.append(s);
+      }
+      d.append(ph); ws.append(d);
+    }
+    $("result").hidden = false;
+  }
+})();
+</script>
+</body>
+</html>
