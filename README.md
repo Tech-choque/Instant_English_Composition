@@ -20,3 +20,9 @@
 ## 使っているもの
 
 - `vendor/speech-sdk/`: Microsoft の Speech SDK（ブラウザ版）1.51.0。npm パッケージから、再配布が許されているファイルだけを置いている（`REDIST.txt`）
+
+## Anki（通勤中に音声だけで回す）
+
+- `data/questions.tsv`: お題と英文（Artifact の12問と同じ）
+- `tools/make_anki.py`: ここから `.apkg` を作る。表は日本語、裏は英文で、どちらも端末の読み上げ（Anki の `{{tts}}`）で再生する
+- 作った `.apkg` はリポジトリに入れない（`.gitignore`）
