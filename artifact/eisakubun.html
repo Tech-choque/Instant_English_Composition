@@ -2,7 +2,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
-/* 1枚のカードを回す練習帳。お題 → 自分の英文 → 答え／添削 → 発音チェックへ */
+/* 1日分のお題を1枚ずつ回す練習帳。お題 → 自分の英文 → 添削 → 発音チェック／Ankiへ */
 :root {
   --bg: #f5f6f4; --surface: #ffffff; --fg: #1d2522; --muted: #5d6a65; --line: #d9dfdb;
   --accent: #1f6f5c; --accent-fg: #ffffff; --soft: #e6f1ed;
@@ -24,16 +24,22 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font-body); f
 .wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 16px; }
 header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 h1 { font-size: 1.3rem; margin: 0; }
-.count { font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.date { font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 p { margin: 0; }
 .muted { color: var(--muted); font-size: .88rem; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.steps button { min-width: 2.6em; padding: 6px 0; font-family: var(--font-mono); background: transparent; color: var(--muted); border-color: var(--line); }
+.steps button[data-done] { color: var(--ok); border-color: var(--ok); }
+.steps button[aria-current="step"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 16px; display: grid; gap: 14px; min-width: 0; }
+.tag { justify-self: start; font-size: .75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 10px; }
 .prompt { font-size: 1.35rem; font-weight: 600; line-height: 1.5; text-wrap: balance; }
 label { font-size: .85rem; color: var(--muted); display: grid; gap: 4px; }
 textarea { font: inherit; font-size: 1.05rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; resize: vertical; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 button, .link { font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 14px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); cursor: pointer; text-decoration: none; display: inline-block; }
 button.sub, .link { background: transparent; color: var(--accent); }
+button.plain { background: transparent; border-color: transparent; color: var(--muted); font-weight: 400; padding: 4px 0; text-decoration: underline; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 button:focus-visible, .link:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .panel { background: var(--soft); border-radius: 8px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
@@ -48,41 +54,45 @@ dd { margin: 0; }
 .status { font-size: .9rem; color: var(--muted); min-height: 1.4em; }
 .status[data-err] { color: var(--ng); }
 nav.row { justify-content: space-between; }
+.anki { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
+.anki h2 { font-size: 1rem; margin: 0; }
+.count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 </style>
 
 <div class="wrap">
   <header>
     <h1>瞬間英作文</h1>
-    <span class="count" id="count">1 / 12</span>
+    <span class="date" id="today"></span>
   </header>
 
-  <div class="card">
-    <p class="muted">日本語を見て、すぐ英語で言ってみてください。キーボードのマイクで話して入力しても構いません。</p>
-    <p class="prompt" id="prompt"></p>
-    <label for="ans">あなたの英文<textarea id="ans" rows="2" spellcheck="false" autocapitalize="sentences" placeholder="英語で入力"></textarea></label>
-    <div class="row">
-      <button id="b-check" type="button">Claudeに添削してもらう</button>
-      <button id="b-answer" type="button" class="sub">答えの例を見る</button>
-    </div>
-    <p class="status" id="status" role="status"></p>
+  <div class="steps" id="steps" aria-label="今日のお題"></div>
 
-    <div class="panel" id="p-answer" hidden>
-      <h2>答えの例</h2>
-      <p class="en" id="model"></p>
-      <div class="row"><a class="link" id="l-model" target="_blank" rel="noopener">この文で発音チェック</a></div>
-    </div>
-
-    <div class="panel" id="p-review" hidden>
-      <h2>添削</h2>
-      <span class="pill" id="verdict"></span>
-      <dl>
-        <dt>自然な言い方</dt><dd class="en" id="natural"></dd>
-        <dt>ポイント</dt><dd id="point"></dd>
-        <dt>発音で気をつけるところ</dt><dd id="pron"></dd>
-      </dl>
-      <div class="row">
-        <a class="link" id="l-mine" target="_blank" rel="noopener">自分の文で発音チェック</a>
-        <a class="link" id="l-natural" target="_blank" rel="noopener">直した文で発音チェック</a>
+  <div class="card" id="card">
+    <p class="status" id="status" role="status">今日のお題を読み込んでいます…</p>
+    <div id="body" hidden>
+      <div style="display:grid;gap:14px">
+        <span class="tag" id="grammar"></span>
+        <p class="prompt" id="prompt"></p>
+        <label for="ans">あなたの英文<textarea id="ans" rows="2" spellcheck="false" autocapitalize="sentences" placeholder="英語で入力"></textarea></label>
+        <div class="row">
+          <button id="b-check" type="button">Claudeに添削してもらう</button>
+          <button id="b-answer" type="button" class="sub">答えの例を見る</button>
+        </div>
+        <div class="panel" id="p-answer" hidden>
+          <h2>答えの例</h2>
+          <p class="en" id="model"></p>
+        </div>
+        <div class="panel" id="p-review" hidden>
+          <h2>添削</h2>
+          <span class="pill" id="verdict"></span>
+          <dl>
+            <dt>あなたの英文</dt><dd id="mine"></dd>
+            <dt>直した英文（Ankiのカードになります）</dt><dd class="en" id="natural"></dd>
+            <dt>ポイント</dt><dd id="point"></dd>
+            <dt>発音で気をつけるところ</dt><dd id="pron"></dd>
+          </dl>
+          <div class="row"><a class="link" id="l-natural" target="_blank" rel="noopener">直した文で発音チェック</a></div>
+        </div>
       </div>
     </div>
   </div>
@@ -91,92 +101,214 @@ nav.row { justify-content: space-between; }
     <button id="b-prev" type="button" class="sub">前のお題</button>
     <button id="b-next" type="button">次のお題</button>
   </nav>
-  <p class="muted">お題は試作用の12問です（中学英語の範囲・身の回りの話題）。発音チェックは別のページ（ブラウザ）で開きます。</p>
+
+  <section class="anki" aria-labelledby="h-anki">
+    <h2 id="h-anki">Ankiに送る</h2>
+    <p class="muted">添削した文を、表＝日本語・裏＝直した英文のカードにします。ファイルを保存して、AnkiDroidで取り込んでください。</p>
+    <div class="row">
+      <button id="b-export" type="button">Anki用ファイルを保存（<span class="count" id="pending">0</span>枚）</button>
+    </div>
+    <button id="b-export-all" type="button" class="plain">書き出し済みも含めて、全部をもう一度保存する</button>
+    <p class="status" id="a-status" role="status"></p>
+  </section>
 </div>
 
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
   const CHECK_URL = "https://tech-choque.github.io/Instant_English_Composition/";
-  const ITEMS = [
-    ["今朝はいつもより少し遅く家を出た。", "I left home a little later than usual this morning."],
-    ["歩いて会社に行くのに1時間かかる。", "It takes an hour to walk to work."],
-    ["子どもを保育園に送ってから仕事に行く。", "I take my kid to daycare before I go to work."],
-    ["週末に魚の水槽の水を替えた。", "I changed the water in the fish tank over the weekend."],
-    ["昼休みに30分、英語を勉強している。", "I study English for thirty minutes during my lunch break."],
-    ["朝の支度をしながら日記を書く。", "I write in my diary while I get ready in the morning."],
-    ["雨が降りそうだから、傘を持っていったほうがいいよ。", "It looks like rain, so you should take an umbrella."],
-    ["その会議は思ったより早く終わった。", "The meeting ended earlier than I expected."],
-    ["何か手伝えることはありますか。", "Is there anything I can help you with?"],
-    ["もう少しゆっくり話してもらえますか。", "Could you speak a little more slowly?"],
-    ["この本は読みやすいけど、内容は深い。", "This book is easy to read, but it's really deep."],
-    ["明日の朝までにこれを終わらせないといけない。", "I have to finish this by tomorrow morning."],
-  ];
+  const PER_DAY = 5;
+  const ANKI_DECK = "02瞬間英作文";
+  const ANKI_NOTETYPE = "瞬間英作文（音声）";
 
-  const store = {
-    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
-  };
-  let i = Math.min(ITEMS.length - 1, Math.max(0, parseInt(store.get("iec.index") || "0", 10) || 0));
+  const pad = (n) => String(n).padStart(2, "0");
+  const now = new Date();
+  const TODAY = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  $("today").textContent = TODAY;
 
-  const checkLink = (text) => `${CHECK_URL}?${new URLSearchParams({ text, ja: ITEMS[i][0] })}`;
-  const say = (msg, isErr) => { $("status").textContent = msg; if (isErr) $("status").dataset.err = ""; else delete $("status").dataset.err; };
+  let db = null, sample = null, downloads = null;
+  let day = null;      // { date, items: [{ja, model, grammar, answer?, natural?, verdict?, point?, pron?, exported?}] }
+  let i = 0;
 
-  function show() {
-    const [ja, en] = ITEMS[i];
-    $("count").textContent = `${i + 1} / ${ITEMS.length}`;
-    $("prompt").textContent = ja;
-    $("model").textContent = en;
-    $("l-model").href = checkLink(en);
-    $("ans").value = "";
-    $("p-answer").hidden = true; $("p-review").hidden = true;
-    $("b-prev").disabled = i === 0;
-    $("b-next").textContent = i === ITEMS.length - 1 ? "最初に戻る" : "次のお題";
-    say("");
-    store.set("iec.index", String(i));
+  const say = (el, msg, isErr) => { $(el).textContent = msg; if (isErr) $(el).dataset.err = ""; else delete $(el).dataset.err; };
+  const checkLink = (text, ja) => `${CHECK_URL}?${new URLSearchParams({ text, ja })}`;
+  const pendingOf = (items) => items.filter((it) => it.natural && !it.exported).length;
+
+  // ---------- render ----------
+  function renderSteps() {
+    const s = $("steps"); s.replaceChildren();
+    day.items.forEach((it, k) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = String(k + 1);
+      b.setAttribute("aria-label", `お題${k + 1}${it.natural ? "（添削済み）" : ""}`);
+      if (it.natural) b.dataset.done = "";
+      if (k === i) b.setAttribute("aria-current", "step");
+      b.onclick = () => { i = k; render(); };
+      s.append(b);
+    });
   }
-  $("b-prev").onclick = () => { if (i > 0) { i--; show(); } };
-  $("b-next").onclick = () => { i = (i + 1) % ITEMS.length; show(); };
+  function render() {
+    const it = day.items[i];
+    renderSteps();
+    $("body").hidden = false; say("status", "");
+    $("grammar").textContent = it.grammar || "";
+    $("grammar").hidden = !it.grammar;
+    $("prompt").textContent = it.ja;
+    $("model").textContent = it.model;
+    $("ans").value = it.answer || "";
+    $("p-answer").hidden = true;
+    showReview(it);
+    $("b-prev").disabled = i === 0;
+    $("b-next").disabled = i === day.items.length - 1;
+  }
+  const VERDICT = { ok: ["通じる", "ok"], mid: ["少し不自然", "mid"], ng: ["通じにくい", "ng"] };
+  function showReview(it) {
+    if (!it.natural) { $("p-review").hidden = true; return; }
+    const [label, v] = VERDICT[it.verdict] || ["—", "mid"];
+    $("verdict").textContent = label; $("verdict").dataset.v = v;
+    $("mine").textContent = it.answer || "";
+    $("natural").textContent = it.natural;
+    $("point").textContent = it.point || "";
+    $("pron").textContent = it.pron || "";
+    $("l-natural").href = checkLink(it.natural, it.ja);
+    $("p-review").hidden = false;
+  }
+  $("b-prev").onclick = () => { if (i > 0) { i--; render(); } };
+  $("b-next").onclick = () => { if (i < day.items.length - 1) { i++; render(); } };
   $("b-answer").onclick = () => { $("p-answer").hidden = false; };
 
-  const samplePromise = window.claude && window.claude.use ? window.claude.use("sample") : Promise.resolve(null);
-  samplePromise.then((s) => { if (!s) { $("b-check").hidden = true; } });
+  // ---------- storage ----------
+  const dayRef = (d) => db.doc(`days/${d}`);
+  async function saveDay() { await dayRef(day.date).set({ date: day.date, items: day.items, pending: pendingOf(day.items) }); }
+  async function refreshPending() {
+    try {
+      const snap = await db.collection("days").where("pending", ">", 0).get();
+      $("pending").textContent = snap.docs.reduce((n, d) => n + (d.data().pending || 0), 0);
+    } catch { /* leave count as is */ }
+  }
 
-  const VERDICT = { ok: ["通じる", "ok"], mid: ["少し不自然", "mid"], ng: ["通じにくい", "ng"] };
+  // ---------- today's questions ----------
+  async function recentPrompts() {
+    try {
+      const snap = await db.collection("days").orderBy("date", "desc").limit(30).get();
+      return snap.docs.flatMap((d) => (d.data().items || []).map((it) => it.ja));
+    } catch { return []; }
+  }
+  async function makeToday() {
+    say("status", "今日のお題を作っています…（初回はClaudeの利用を許可するか聞かれます）");
+    const past = await recentPrompts();
+    const prompt = [
+      `瞬間英作文の今日のお題を${PER_DAY}問作ってください。学習者は日本人の社会人で、子育て中、徒歩で通勤しています。`,
+      "条件:",
+      "- 英文は中学英語の文法と、基本の1,000語程度の語彙で言えるもの。1文は8〜14語",
+      "- 話題は身の回りの日常（通勤・家事・子育て・職場の雑談・天気・買い物・休日・趣味など）。仕事の顧客や病気・体調の話題は避ける",
+      "- 文法はばらけさせる（過去形・現在完了・比較・不定詞・動名詞・関係代名詞・助動詞・受け身・間接疑問など）",
+      "- 日本語は、実際に口にしそうな自然な言い方にする",
+      "- 下の「これまでのお題」と同じ内容は避ける",
+      "",
+      '次のJSONだけを返してください: {"items": [{"ja": "日本語の文", "en": "自然な英文の例", "grammar": "主な文法項目（日本語で短く）"}]}',
+      "",
+      "これまでのお題:",
+      past.length ? past.map((s) => "- " + s).join("\n") : "（なし）",
+    ].join("\n");
+    const r = await sample.json(prompt, { modelTier: "default" });
+    const items = (r && r.items || []).filter((x) => x && x.ja && x.en).slice(0, PER_DAY)
+      .map((x) => ({ ja: String(x.ja), model: String(x.en), grammar: String(x.grammar || "") }));
+    if (!items.length) throw { code: "empty" };
+    day = { date: TODAY, items };
+    await saveDay();
+  }
+
+  // ---------- correction ----------
   $("b-check").onclick = async () => {
+    const it = day.items[i];
     const answer = $("ans").value.trim();
-    if (!answer) { say("先に英文を入れてください。", true); return; }
-    const sample = await samplePromise;
-    if (!sample) { say("この表示ではClaudeを呼び出せません。", true); return; }
+    if (!answer) { say("status", "先に英文を入れてください。", true); return; }
     const btn = $("b-check"); btn.disabled = true;
-    say("添削しています…");
+    say("status", "添削しています…");
     const prompt = [
       "あなたは瞬間英作文の講師です。学習者は日本人の社会人で、中学英語の範囲で「簡単な英語ですぐ言う」練習をしています。",
       "日本語のお題と、学習者が言った英文を見て、次のJSONだけを返してください。説明文やコードブロックは付けないでください。",
-      '{"verdict": "ok" | "mid" | "ng", "natural": "自然な英文1つ（中学英語の範囲・学習者の文を活かす）", "point": "直した理由を日本語で1〜2文。直す必要がなければ良い点を1文", "pron": "この文を言うときの発音の注意を日本語で1文。リンキング・フラッピング・リダクションのどれかを、具体的な単語の組み合わせで"}',
+      '{"verdict": "ok" | "mid" | "ng", "natural": "自然な英文1つ（中学英語の範囲・学習者の文を活かす。そのままで自然なら学習者の文をそのまま）", "point": "直した理由を日本語で1〜2文。直す必要がなければ良い点を1文", "pron": "この文を言うときの発音の注意を日本語で1文。リンキング・フラッピング・リダクションのどれかを、具体的な単語の組み合わせで"}',
       "verdict の基準: ok=そのまま通じて自然 / mid=通じるが不自然 / ng=意味が伝わりにくい。",
       "",
-      `お題: ${ITEMS[i][0]}`,
+      `お題: ${it.ja}`,
       `学習者の英文: ${answer}`,
     ].join("\n");
     try {
       const r = await sample.json(prompt, { modelTier: "quick" });
-      const [label, v] = VERDICT[r.verdict] || [String(r.verdict || "—"), "mid"];
-      $("verdict").textContent = label; $("verdict").dataset.v = v;
-      $("natural").textContent = r.natural || "";
-      $("point").textContent = r.point || "";
-      $("pron").textContent = r.pron || "";
-      $("l-mine").href = checkLink(answer);
-      $("l-natural").href = checkLink(r.natural || answer);
-      $("p-review").hidden = false;
-      say("");
+      Object.assign(it, {
+        answer, natural: String(r.natural || answer), verdict: r.verdict,
+        point: String(r.point || ""), pron: String(r.pron || ""), exported: false,
+      });
+      showReview(it); renderSteps(); say("status", "");
+      try { await saveDay(); refreshPending(); }
+      catch { say("status", "添削は終わりましたが、保存できませんでした。通信状態を確かめてください。", true); }
     } catch (e) {
-      if (e && e.code === "not_granted") say("Claudeの利用が許可されませんでした。答えの例で確認してください。", true);
-      else if (e && e.code === "rate_limited") say("少し時間をおいてから、もう一度どうぞ。", true);
-      else say(`添削できませんでした（${(e && (e.code || e.message)) || e}）`, true);
+      if (e && e.code === "not_granted") say("status", "Claudeの利用が許可されませんでした。答えの例で確認してください。", true);
+      else if (e && e.code === "rate_limited") say("status", "少し時間をおいてから、もう一度どうぞ。", true);
+      else say("status", `添削できませんでした（${(e && (e.code || e.message)) || e}）`, true);
     } finally { btn.disabled = false; }
   };
 
-  show();
+  // ---------- Anki export ----------
+  const clean = (s) => String(s).replace(/[\t\r\n]+/g, " ").trim();
+  async function exportCards(all) {
+    if (!downloads) { say("a-status", "この表示ではファイルを保存できません。", true); return; }
+    say("a-status", "まとめています…");
+    let docs;
+    try {
+      const q = all ? db.collection("days").orderBy("date") : db.collection("days").where("pending", ">", 0);
+      docs = (await q.get()).docs.map((d) => d.data()).sort((a, b) => (a.date < b.date ? -1 : 1));
+    } catch { say("a-status", "読み込めませんでした。通信状態を確かめてください。", true); return; }
+    const rows = [];
+    for (const d of docs) for (const it of d.items || []) if (it.natural && (all || !it.exported)) rows.push([clean(it.ja), clean(it.natural)]);
+    if (!rows.length) { say("a-status", "まだ添削した文がありません。"); return; }
+    const text = [
+      "#separator:tab", "#html:false", `#notetype:${ANKI_NOTETYPE}`, `#deck:${ANKI_DECK}`, "#columns:Japanese\tEnglish",
+      ...rows.map((r) => r.join("\t")),
+    ].join("\n") + "\n";
+    try {
+      await downloads.save({ filename: `anki-${TODAY}.txt`, data: text });
+    } catch (e) {
+      say("a-status", e && e.code === "declined" ? "保存をやめました。" : `保存できませんでした（${(e && e.code) || e}）`, e && e.code !== "declined");
+      return;
+    }
+    // mark as exported only after the file was actually saved
+    try {
+      for (const d of docs) {
+        const items = (d.items || []).map((it) => (it.natural ? { ...it, exported: true } : it));
+        await dayRef(d.date).set({ ...d, items, pending: 0 });
+        if (day && d.date === day.date) day.items = items;
+      }
+    } catch { /* the file is saved; the count will catch up next time */ }
+    say("a-status", `${rows.length}枚分を保存しました。AnkiDroidで取り込んでください。`);
+    refreshPending();
+  }
+  $("b-export").onclick = () => exportCards(false);
+  $("b-export-all").onclick = () => exportCards(true);
+
+  // ---------- boot ----------
+  (async () => {
+    const use = (n) => (window.claude && window.claude.use ? window.claude.use(n) : Promise.resolve(null));
+    [db, sample, downloads] = await Promise.all([use("db"), use("sample"), use("downloads")]);
+    if (!downloads) { $("b-export").disabled = true; $("b-export-all").hidden = true; }
+    if (!db) { say("status", "このページのデータに接続できませんでした。claude.aiにログインした状態で開いてください。", true); return; }
+    try {
+      const snap = await dayRef(TODAY).get();
+      if (snap.exists) day = JSON.parse(JSON.stringify(snap.data()));
+      else if (sample) await makeToday();
+      else { say("status", "この表示ではClaudeを呼び出せないため、今日のお題を作れません。", true); return; }
+    } catch (e) {
+      say("status", e && e.code === "not_granted"
+        ? "Claudeの利用が許可されなかったため、今日のお題を作れませんでした。ページを開き直すと、もう一度聞かれます。"
+        : `今日のお題を作れませんでした（${(e && (e.code || e.message)) || e}）。ページを開き直してください。`, true);
+      return;
+    }
+    i = Math.max(0, day.items.findIndex((it) => !it.natural));
+    if (i < 0 || !day.items[i]) i = 0;
+    render();
+    refreshPending();
+  })();
 })();
 </script>
