@@ -65,7 +65,7 @@ nav.row { justify-content: space-between; }
     <span class="date" id="today"></span>
   </header>
 
-  <div class="steps" id="steps" aria-label="今日のお題"></div>
+  <div class="steps" id="steps" aria-label="今日のお題" hidden></div>
 
   <div class="card" id="card">
     <p class="status" id="status" role="status">今日のお題を読み込んでいます…</p>
@@ -97,7 +97,7 @@ nav.row { justify-content: space-between; }
     </div>
   </div>
 
-  <nav class="row" aria-label="お題の移動">
+  <nav class="row" id="nav" aria-label="お題の移動" hidden>
     <button id="b-prev" type="button" class="sub">前のお題</button>
     <button id="b-next" type="button">次のお題</button>
   </nav>
@@ -117,7 +117,7 @@ nav.row { justify-content: space-between; }
 (() => {
   const $ = (id) => document.getElementById(id);
   const CHECK_URL = "https://tech-choque.github.io/Instant_English_Composition/";
-  const PER_DAY = 5;
+  const PER_DAY = 1;
   const ANKI_DECK = "02瞬間英作文";
   const ANKI_NOTETYPE = "瞬間英作文（音声）";
 
@@ -150,6 +150,8 @@ nav.row { justify-content: space-between; }
   function render() {
     const it = day.items[i];
     renderSteps();
+    const multi = day.items.length > 1;
+    $("steps").hidden = !multi; $("nav").hidden = !multi;
     $("body").hidden = false; say("status", "");
     $("grammar").textContent = it.grammar || "";
     $("grammar").hidden = !it.grammar;
@@ -204,6 +206,7 @@ nav.row { justify-content: space-between; }
       "- 話題は身の回りの日常（通勤・家事・子育て・職場の雑談・天気・買い物・休日・趣味など）。仕事の顧客や病気・体調の話題は避ける",
       "- 文法はばらけさせる（過去形・現在完了・比較・不定詞・動名詞・関係代名詞・助動詞・受け身・間接疑問など）",
       "- 日本語は、実際に口にしそうな自然な言い方にする",
+      "- 家族は「子ども」「家族」と書き、子どもの性別（娘・息子）や人数は決めつけない",
       "- 下の「これまでのお題」と同じ内容は避ける",
       "",
       '次のJSONだけを返してください: {"items": [{"ja": "日本語の文", "en": "自然な英文の例", "grammar": "主な文法項目（日本語で短く）"}]}',

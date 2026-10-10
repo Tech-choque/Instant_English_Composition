@@ -6,7 +6,7 @@
 
 | ページ | 置き場所 | やること |
 | --- | --- | --- |
-| 瞬間英作文 | claude.ai の Artifact（ソースは `artifact/eisakubun.html`） | 毎日5問のお題をClaudeが作る／答えの例／Claudeの添削（本人のプランで動く）／直した英文をAnki用ファイルに書き出す |
+| 瞬間英作文 | claude.ai の Artifact（ソースは `artifact/eisakubun.html`） | 毎日1問のお題をClaudeが作る／答えの例／Claudeの添削（本人のプランで動く）／直した英文をAnki用ファイルに書き出す |
 | 発音チェック | GitHub Pages（`index.html`） | Azureのお手本音声／録音して音素ごとに採点 |
 
 分けている理由: Artifactの中ではマイクが使えず、Azureへの通信もページの制限（CSP）で止められる（2026-10-10、Android の Claude アプリで確認）。
