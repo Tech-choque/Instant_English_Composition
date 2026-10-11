@@ -79,6 +79,7 @@ details[open] summary { margin-bottom: 10px; }
     <div class="row">
       <button id="b-listen" type="button" class="sub">お手本を聞く</button>
       <button id="b-rec" type="button">録音して採点</button>
+      <button id="b-anki" type="button" class="sub" hidden>Ankiに追加</button>
     </div>
     <p class="status" id="status" role="status"></p>
   </section>
@@ -145,6 +146,19 @@ details[open] summary { margin-bottom: 10px; }
   const q = new URLSearchParams(location.search);
   if (q.get("text")) $("ref").value = q.get("text");
   if (q.get("ja")) { $("ja").textContent = "お題: " + q.get("ja"); $("ja").hidden = false; }
+
+  // ---------- add to AnkiDroid via the share sheet (title → 1st field, text → 2nd field が狙い) ----------
+  if (q.get("ja") && navigator.share) $("b-anki").hidden = false;
+  $("b-anki").onclick = async () => {
+    const en = $("ref").value.trim();
+    try {
+      await navigator.share({ title: q.get("ja"), text: en });
+      say("共有先でAnkiDroidを選び、ノートタイプ「瞬間英作文（音声）」とデッキ「02瞬間英作文」を確かめて保存してください。");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      say("共有できませんでした: " + (e && e.message || e), true);
+    }
+  };
 
   const say = (msg, isErr) => { $("status").textContent = msg; if (isErr) $("status").dataset.err = ""; else delete $("status").dataset.err; };
   const config = () => {
