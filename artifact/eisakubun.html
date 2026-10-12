@@ -2,7 +2,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
-/* 英語学習の入口。シャドーイング（外部ページ）へのリンク → 瞬間英作文（お題 → 自分の英文 → 添削 → 発音チェック／Ankiへ） */
+/* 英語学習の入口。シャドーイング（外部ページ）へのリンク → 瞬間英作文（お題 → 自分の英文 → 添削 → 発音チェック。Ankiへは発音チェックのページから） */
 :root {
   --bg: #f5f6f4; --surface: #ffffff; --fg: #1d2522; --muted: #5d6a65; --line: #d9dfdb;
   --accent: #1f6f5c; --accent-fg: #ffffff; --soft: #e6f1ed;
@@ -54,9 +54,6 @@ dd { margin: 0; }
 .status { font-size: .9rem; color: var(--muted); min-height: 1.4em; }
 .status[data-err] { color: var(--ng); }
 nav.row { justify-content: space-between; }
-.anki { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
-.anki h2 { font-size: 1rem; margin: 0; }
-.count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 h2.sec { font-size: 1rem; margin: 0; }
 .shadow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--surface); }
 .shadow p { min-width: 0; }
@@ -100,7 +97,7 @@ h2.sec { font-size: 1rem; margin: 0; }
           <span class="pill" id="verdict"></span>
           <dl>
             <dt>あなたの英文</dt><dd id="mine"></dd>
-            <dt>直した英文（Ankiのカードになります）</dt><dd class="en" id="natural"></dd>
+            <dt>直した英文（発音チェックのページから Anki に追加できます）</dt><dd class="en" id="natural"></dd>
             <dt>ポイント</dt><dd id="point"></dd>
             <dt>発音で気をつけるところ</dt><dd id="pron"></dd>
           </dl>
@@ -114,16 +111,6 @@ h2.sec { font-size: 1rem; margin: 0; }
     <button id="b-prev" type="button" class="sub">前のお題</button>
     <button id="b-next" type="button">次のお題</button>
   </nav>
-
-  <section class="anki" aria-labelledby="h-anki">
-    <h2 id="h-anki">Ankiに送る</h2>
-    <p class="muted">添削した文を、表＝日本語・裏＝直した英文のカードにします。ファイルを保存して、AnkiDroidで取り込んでください。</p>
-    <div class="row">
-      <button id="b-export" type="button">Anki用ファイルを保存（<span class="count" id="pending">0</span>枚）</button>
-    </div>
-    <button id="b-export-all" type="button" class="plain">書き出し済みも含めて、全部をもう一度保存する</button>
-    <p class="status" id="a-status" role="status"></p>
-  </section>
 </div>
 
 <script>
@@ -131,15 +118,13 @@ h2.sec { font-size: 1rem; margin: 0; }
   const $ = (id) => document.getElementById(id);
   const CHECK_URL = "https://tech-choque.github.io/Instant_English_Composition/";
   const PER_DAY = 1;
-  const ANKI_DECK = "02瞬間英作文";
-  const ANKI_NOTETYPE = "瞬間英作文（音声）";
 
   const pad = (n) => String(n).padStart(2, "0");
   const now = new Date();
   const TODAY = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   $("today").textContent = TODAY;
 
-  let db = null, sample = null, downloads = null;
+  let db = null, sample = null;
   let day = null;      // { date, items: [{ja, model, grammar, answer?, natural?, verdict?, point?, pron?, exported?}] }
   let i = 0;
 
@@ -195,12 +180,6 @@ h2.sec { font-size: 1rem; margin: 0; }
   // ---------- storage ----------
   const dayRef = (d) => db.doc(`days/${d}`);
   async function saveDay() { await dayRef(day.date).set({ date: day.date, items: day.items, pending: pendingOf(day.items) }); }
-  async function refreshPending() {
-    try {
-      const snap = await db.collection("days").where("pending", ">", 0).get();
-      $("pending").textContent = snap.docs.reduce((n, d) => n + (d.data().pending || 0), 0);
-    } catch { /* leave count as is */ }
-  }
 
   // ---------- today's questions ----------
   async function recentPrompts() {
@@ -258,7 +237,7 @@ h2.sec { font-size: 1rem; margin: 0; }
         point: String(r.point || ""), pron: String(r.pron || ""), exported: false,
       });
       showReview(it); renderSteps(); say("status", "");
-      try { await saveDay(); refreshPending(); }
+      try { await saveDay(); }
       catch { say("status", "添削は終わりましたが、保存できませんでした。通信状態を確かめてください。", true); }
     } catch (e) {
       if (e && e.code === "not_granted") say("status", "Claudeの利用が許可されませんでした。答えの例で確認してください。", true);
@@ -267,48 +246,11 @@ h2.sec { font-size: 1rem; margin: 0; }
     } finally { btn.disabled = false; }
   };
 
-  // ---------- Anki export ----------
-  const clean = (s) => String(s).replace(/[\t\r\n]+/g, " ").trim();
-  async function exportCards(all) {
-    if (!downloads) { say("a-status", "この表示ではファイルを保存できません。", true); return; }
-    say("a-status", "まとめています…");
-    let docs;
-    try {
-      const q = all ? db.collection("days").orderBy("date") : db.collection("days").where("pending", ">", 0);
-      docs = (await q.get()).docs.map((d) => d.data()).sort((a, b) => (a.date < b.date ? -1 : 1));
-    } catch { say("a-status", "読み込めませんでした。通信状態を確かめてください。", true); return; }
-    const rows = [];
-    for (const d of docs) for (const it of d.items || []) if (it.natural && (all || !it.exported)) rows.push([clean(it.ja), clean(it.natural)]);
-    if (!rows.length) { say("a-status", "まだ添削した文がありません。"); return; }
-    const text = [
-      "#separator:tab", "#html:false", `#notetype:${ANKI_NOTETYPE}`, `#deck:${ANKI_DECK}`, "#columns:Japanese\tEnglish",
-      ...rows.map((r) => r.join("\t")),
-    ].join("\n") + "\n";
-    try {
-      await downloads.save({ filename: `anki-${TODAY}.txt`, data: text });
-    } catch (e) {
-      say("a-status", e && e.code === "declined" ? "保存をやめました。" : `保存できませんでした（${(e && e.code) || e}）`, e && e.code !== "declined");
-      return;
-    }
-    // mark as exported only after the file was actually saved
-    try {
-      for (const d of docs) {
-        const items = (d.items || []).map((it) => (it.natural ? { ...it, exported: true } : it));
-        await dayRef(d.date).set({ ...d, items, pending: 0 });
-        if (day && d.date === day.date) day.items = items;
-      }
-    } catch { /* the file is saved; the count will catch up next time */ }
-    say("a-status", `${rows.length}枚分を保存しました。AnkiDroidで取り込んでください。`);
-    refreshPending();
-  }
-  $("b-export").onclick = () => exportCards(false);
-  $("b-export-all").onclick = () => exportCards(true);
 
   // ---------- boot ----------
   (async () => {
     const use = (n) => (window.claude && window.claude.use ? window.claude.use(n) : Promise.resolve(null));
-    [db, sample, downloads] = await Promise.all([use("db"), use("sample"), use("downloads")]);
-    if (!downloads) { $("b-export").disabled = true; $("b-export-all").hidden = true; }
+    [db, sample] = await Promise.all([use("db"), use("sample")]);
     if (!db) { say("status", "このページのデータに接続できませんでした。claude.aiにログインした状態で開いてください。", true); return; }
     try {
       const snap = await dayRef(TODAY).get();
@@ -324,7 +266,6 @@ h2.sec { font-size: 1rem; margin: 0; }
     i = Math.max(0, day.items.findIndex((it) => !it.natural));
     if (i < 0 || !day.items[i]) i = 0;
     render();
-    refreshPending();
   })();
 })();
 </script>

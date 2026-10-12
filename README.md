@@ -6,7 +6,7 @@
 
 | ページ | 置き場所 | やること |
 | --- | --- | --- |
-| 瞬間英作文 | claude.ai の Artifact「Comprehensive English」（ソースは `artifact/eisakubun.html`。シャドーイング `Tech-choque/Shadowing` への入口も兼ねる） | 毎日1問のお題をClaudeが作る／答えの例／Claudeの添削（本人のプランで動く）／直した英文をAnki用ファイルに書き出す |
+| 瞬間英作文 | claude.ai の Artifact「Comprehensive English」（ソースは `artifact/eisakubun.html`。シャドーイング `Tech-choque/Shadowing` への入口も兼ねる） | 毎日1問のお題をClaudeが作る／答えの例／Claudeの添削（本人のプランで動く） |
 | 発音チェック | GitHub Pages（`index.html`） | Azureのお手本音声／録音して音素ごとに採点 |
 
 分けている理由: Artifactの中ではマイクが使えず、Azureへの通信もページの制限（CSP）で止められる（2026-10-10、Android の Claude アプリで確認）。
@@ -24,7 +24,7 @@
 ## Anki（通勤中に音声だけで回す）
 
 - 標準の追加方法: 発音チェックのページの「Ankiに追加」→ 共有メニューで AnkiDroid → 保存（お題が表、英文が裏に入る。2026-10-11 実機で確認）。AnkiDroid API は Web ページから呼べないため、この形にしている
-- 予備: Artifact で添削した「直した英文」が、表＝日本語・裏＝英文のカードになる。Artifact の「Anki用ファイルを保存」でタブ区切りの `.txt` を保存し、AnkiDroid で取り込む（ノートタイプ「瞬間英作文（音声）」、デッキ「02瞬間英作文」）
+- ~~予備: Artifact の「Anki用ファイルを保存」~~ → 2026-10-12 に削除（使わないため。本人）。Anki への追加は発音チェックのページからだけ
 - ノートタイプ「瞬間英作文（音声）」は、最初に `.apkg`（下記）を取り込んだときに作られる
 - `data/questions.tsv`: 試作1の12問
 - `tools/make_anki.py`: ここから `.apkg` を作る。表は日本語、裏は英文で、どちらも端末の読み上げ（Anki の `{{tts}}`）で再生する
