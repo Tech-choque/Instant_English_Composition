@@ -1,8 +1,8 @@
-<title>瞬間英作文</title>
+<title>Comprehensive English</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
-/* 1日分のお題を1枚ずつ回す練習帳。お題 → 自分の英文 → 添削 → 発音チェック／Ankiへ */
+/* 英語学習の入口。シャドーイング（外部ページ）へのリンク → 瞬間英作文（お題 → 自分の英文 → 添削 → 発音チェック／Ankiへ） */
 :root {
   --bg: #f5f6f4; --surface: #ffffff; --fg: #1d2522; --muted: #5d6a65; --line: #d9dfdb;
   --accent: #1f6f5c; --accent-fg: #ffffff; --soft: #e6f1ed;
@@ -57,13 +57,26 @@ nav.row { justify-content: space-between; }
 .anki { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 10px; }
 .anki h2 { font-size: 1rem; margin: 0; }
 .count { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+h2.sec { font-size: 1rem; margin: 0; }
+.shadow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; background: var(--surface); }
+.shadow p { min-width: 0; }
 </style>
 
 <div class="wrap">
   <header>
-    <h1>瞬間英作文</h1>
+    <h1>Comprehensive English</h1>
     <span class="date" id="today"></span>
   </header>
+
+  <section class="shadow" aria-labelledby="h-shadow">
+    <div style="display:grid;gap:2px;min-width:0">
+      <h2 class="sec" id="h-shadow">シャドーイング</h2>
+      <p class="muted">今週の台本と音声（Chromeで開きます）</p>
+    </div>
+    <a class="link" href="https://tech-choque.github.io/Shadowing/" target="_blank" rel="noopener">開く</a>
+  </section>
+
+  <h2 class="sec">瞬間英作文</h2>
 
   <div class="steps" id="steps" aria-label="今日のお題" hidden></div>
 
